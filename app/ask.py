@@ -21,13 +21,25 @@ from app.config import MODEL, api_error_message, get_api_key
 DEFAULT_QUESTION = "AIE2026の講座の宿題にある「3レベル」とは何ですか？"
 
 
+def _print_usage(response) -> None:
+    usage = getattr(response, "usage_metadata", None)
+    if usage is None:
+        return
+
+    prompt_tokens = getattr(usage, "prompt_token_count", None)
+    output_tokens = getattr(usage, "candidates_token_count", None)
+    if prompt_tokens is None and output_tokens is None:
+        return
+
+    prompt_value = prompt_tokens if prompt_tokens is not None else "unknown"
+    output_value = output_tokens if output_tokens is not None else "unknown"
+    print(f"[usage] input: {prompt_value}, output: {output_value}")
+
+
 def ask(question: str) -> str:
     client = genai.Client(api_key=get_api_key())
     response = client.models.generate_content(model=MODEL, contents=question)
-
-    # TODO(第1回 演習): response.usage_metadata から
-    #   入力トークン数と出力トークン数を表示してみよう（Copilotに頼んでよい）
-
+    _print_usage(response)
     return response.text
 
 
