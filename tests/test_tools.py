@@ -67,10 +67,14 @@ def test_ask_prints_input_and_output_token_usage(monkeypatch, capsys):
         def models(self):
             return self
 
-        def generate_content(self, model, contents):
+        def generate_content(self, model, contents, config):
             assert model == ask_module.MODEL
             assert contents == "質問"
+            assert config.temperature == ask_module.TEMPERATURE
             return FakeResponse()
+
+        def close(self):
+            pass
 
     monkeypatch.setattr(ask_module.genai, "Client", FakeClient)
     monkeypatch.setattr(ask_module, "get_api_key", lambda: "dummy-key")
