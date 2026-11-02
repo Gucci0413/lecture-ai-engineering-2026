@@ -2,8 +2,8 @@
 
 ## 演習
 
-- 使ったモデル・設定（`result.json` の `config` から）：
-- 自分で学習を実行したか（`executed_training_myself`）：はい （実行できた範囲：　）
+- 使ったモデル・設定（`result.json` の `config` から）：config の要点：lr 2e-4、lora_r 16、lora_alpha 32、seed 42、warmup_steps 6。gen: （"do_sample": False): 貪欲生成　学習前後で生成条件を揃える。
+- 自分で学習を実行したか（`executed_training_myself`）：はい （実行できた範囲：８まで　）
 - 学習前：`format_rate` =　0.095238	 / `content_rate` =　0.000000	
 - 学習後：`format_rate` =　1.000000 / `content_rate` =　0.904762	
 - 退行した質問：
