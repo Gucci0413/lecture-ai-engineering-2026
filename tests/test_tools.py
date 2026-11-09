@@ -52,6 +52,19 @@ def test_make_quiz_reports_when_lecture_has_no_terms():
     assert "用語が見つかりません" in tools.make_quiz(99)
 
 
+def test_save_learning_log_appends_records_to_learning_log_directory(tmp_path, monkeypatch):
+    monkeypatch.setattr(tools, "LEARNING_LOG_DIR", tmp_path / "learning_log")
+
+    tools.save_learning_log({"topic": "LoRA", "note": "復習した"})
+    tools.save_learning_log({"topic": "RAG", "note": "用語を確認した"})
+
+    saved_logs = json.loads((tmp_path / "learning_log" / "logs.json").read_text(encoding="utf-8"))
+    assert saved_logs == [
+        {"topic": "LoRA", "note": "復習した"},
+        {"topic": "RAG", "note": "用語を確認した"},
+    ]
+
+
 def test_default_question_of_lecture1_is_answerable_from_glossary():
     """第1回の既定の質問（app.ask）は、第3回のエージェントが用語集で正しく答えられること。"""
     from app.ask import DEFAULT_QUESTION
