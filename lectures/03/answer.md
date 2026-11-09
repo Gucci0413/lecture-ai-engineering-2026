@@ -9,7 +9,21 @@
 
 ## 宿題
 
-- 取り組んだレベル：基礎 / 実装 / 発展
-- やったこと：
+- 取り組んだレベル：　発展
+- やったこと：発展の（b）に取り組み、piをcodespacesで動かした。様々な質問をした。英語での質問：can you explain what LoRA is?, what is the clear difference between LoRA and QLoRA?
+piを使っていない時に使うエージェント呼ぶコマンドで質問をしてみる。：uv run python -m app.agent --trace "LoRAとは？" uv run python -m app.agent --trace "LoRAとQLoRAの違いは？"
+日本語だけの質問：LoRAとは？ 
+piの公式ドキュメントから、systemprompt.ptにアクセスして、システムプロンプトの違いを確認した。
+
 - 結果：
-- 気づき・疑問：
+英語で質問した時は、Geminiを使っているような返答が返ってきた。例えば、what is the clear difference between LoRA and QLoRA?という質問の返答では、それぞれがどんな意味かというのに加えて、わかりやすい表を用いて違いを説明していた。
+uv run python -m app.agent --trace "LoRAとは？"と質問をすると、私たちが構築したエージェントの回答と同様にtoolを読んで、glossaryからクエリーした通りの回答が返ってきた。
+日本語の質問：LoRAとは？については、上記と同様glossaryから引用した回答が返ってきた。
+
+piのシステムプロンプトについてはかなりの違いが見られた。（私一人で理解するのは苦労したためChat GPTを利用した。）
+まず、基本のシステムプロンプトはとても簡潔かつシンプルに書かれていた。主軸は、「You are a coding assistant running inside pi, a coding agent harness. Help users inspect files, run commands, and modify code.」というプロンプト。そしてここにツールが加わる形の構成になっている。
+ツールはread, bash, edit, writeの４つ。
+このような具体的な行動は、動的に変化する。：ツール説明、ルール、ドキュメント、プロジェクト固有の指示、スキルなどがシステムプロンプトを構成する。
+hiddentoolによって、ツールの説明をシステムプロンプトに表示せず、別のツールを経由して使用する設計に対応している。
+
+- 気づき・疑問：piではシステムプロンプト自体は簡潔に書き、そこに”もし必要な場面であれば”という過程のもとツールが追加される形になっていた。システムプロンプトが簡潔であればあるほど、エージェントの性能が上がるのか、それともシステムプロンプトは具体的の方がエージェントの性能が上がるのかはよくわからなかった。具体的に書きすぎると、守備範囲を狭めてしまうのではないかと思う。そのため、場面に応じてシステムプロンプトが変化する方が汎用性が高いエージェントになるのではないか。

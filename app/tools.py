@@ -10,6 +10,7 @@ from functools import cache
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+LEARNING_LOG_DIR = Path(__file__).resolve().parent.parent / "learning_log"
 MAX_RESULTS = 3
 
 
@@ -80,9 +81,7 @@ def get_lecture_summary(lecture: int) -> str:
         return path.read_text(encoding="utf-8")
 
 def make_quiz(lecture: int) -> str:
-    """指定した回の用語から1つを選び、確認問題と答えを返す。
-
-    「第2回の確認問題を出して」のように、
+    """用語からを選び、確認問題と答えを返す。
     復習用の問題を求められたときに使う。
     """
         # 1. load_glossary() から lecture が一致する用語を集める
@@ -102,4 +101,24 @@ def make_quiz(lecture: int) -> str:
         ensure_ascii=False,
     )
 
+def save_learning_log(log: dict[str, str]) -> str:
+    """利用者が承認した学習ログを learning_log/ に追記する。
 
+    学習の進捗や、学習中に出てきた質問・回答などを記録するために使う。
+    log には記録したい項目と文字列の値を指定する。
+    """
+    LEARNING_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LEARNING_LOG_DIR / "logs.json"
+    if log_path.exists():
+        existing_logs = json.loads(log_path.read_text(encoding="utf-8"))
+        if not isinstance(existing_logs, list):
+            raise ValueError(f"{log_path} must contain a JSON array")
+    else:
+        existing_logs = []
+
+    existing_logs.append(log)
+    log_path.write_text(
+        json.dumps(existing_logs, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return "学習ログを learning_log/logs.json に保存しました。"
