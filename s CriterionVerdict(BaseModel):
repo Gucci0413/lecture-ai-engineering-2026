@@ -1,0 +1,20 @@
+[1mdiff --git a/app/judge.py b/app/judge.py[m
+[1mindex 3143bb2..c43ee38 100644[m
+[1m--- a/app/judge.py[m
+[1m+++ b/app/judge.py[m
+[36m@@ -53,11 +53,11 @@[m [mREQUIRED = ["grounding", "scope", "hint", "lecture_mark"][m
+ Verdict = Literal["pass", "fail", "unsure"][m
+ [m
+ [m
+[31m-class CriterionVerdict(BaseModel):[m
+[31m-    """1 つの基準に対する判定。reason を先に書かせてから verdict を決めさせる（理由→判定の順）。"""[m
+[31m-[m
+[31m-    reason: str = Field(description="判定の理由。日本語で 1〜2 文")[m
+[32m+[m[32mclass CriterionJudgment(BaseModel):[m
+[32m+[m[32m """1 つの基準に対する判定。verdict を先に書かせてから reason を決めさせる（理由→判定の順）。"""[m
+     verdict: Verdict = Field(description="pass / fail / unsure のどれか")[m
+[32m+[m[32m    reason: str = Field(description="判定の理由。日本語で 1〜2 文")[m
+[32m+[m
+ [m
+ [m
+ class JudgeResult(BaseModel):[m
