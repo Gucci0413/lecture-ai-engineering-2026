@@ -4,6 +4,8 @@
 「採点 → 人のラベルとの比較 → 要確認・不一致の集計」が通ることを確かめる。
 """
 
+import json
+
 from app import judge
 from app.judge import (
     ALL_CRITERIA,
@@ -17,6 +19,7 @@ from app.judge import (
     overall,
     read_jsonl,
     summarize,
+    write_result,
 )
 
 INSTRUCTOR_LABELS = judge.ROOT / "lectures" / "04" / "reference" / "labels_instructor.jsonl"
@@ -68,3 +71,20 @@ def test_judge_pipeline_with_fake_model():
     assert summary["coverage"]["covered"] + len({r["id"] for r in summary["review"]}) == 10
     for m in summary["mismatches"]:
         assert m["kind"] in ("見逃し", "過検出")
+
+
+def test_judge_records_each_completed_case(tmp_path):
+    cases = read_jsonl(DEFAULT_CASES)[:2]
+    agent = build_judge(build_test_model(), DEFAULT_RUBRIC.read_text(encoding="utf-8"))
+    output = tmp_path / "judge_result.json"
+    saved_ids = []
+
+    def save_progress(verdicts):
+        write_result(output, "test", "rubric.md", "2026-01-01T00:00:00", verdicts)
+        saved = json.loads(output.read_text(encoding="utf-8"))
+        saved_ids.append(list(saved["verdicts"]))
+
+    verdicts = judge_cases(agent, cases, on_case_complete=save_progress)
+
+    assert saved_ids == [[cases[0]["id"]], [cases[0]["id"], cases[1]["id"]]]
+    assert list(verdicts) == [cases[0]["id"], cases[1]["id"]]
