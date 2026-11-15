@@ -15,12 +15,14 @@ pass / fail / unsure のどれかを返させる（構造化出力）。unsure �
 
 import argparse
 import json
+import os
 import re
+import tempfile
 import time
 import unicodedata
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Callable, Literal
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
@@ -52,10 +54,11 @@ Verdict = Literal["pass", "fail", "unsure"]
 
 
 class CriterionVerdict(BaseModel):
-    """1 つの基準に対する判定。reason を先に書かせてから verdict を決めさせる（理由→判定の順）。"""
+    """1つの基準に対する判定。verdict を先に決めさせてから reason を書かせる。"""
 
-    reason: str = Field(description="判定の理由。日本語で 1〜2 文")
     verdict: Verdict = Field(description="pass / fail / unsure のどれか")
+    reason: str = Field(description="判定の理由。日本語で 1〜2 文")
+
 
 
 class JudgeResult(BaseModel):
@@ -76,6 +79,33 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
     with open(path, "w", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def write_result(
+    path: Path,
+    model: str,
+    rubric: str,
+    run_at: str,
+    verdicts: dict[str, dict],
+    summary: dict | None = None,
+) -> None:
+    """採点結果を一時ファイル経由で保存し、途中終了時も直前の結果を残す。"""
+    data = {"model": model, "rubric": rubric, "run_at": run_at, "verdicts": verdicts}
+    if summary is not None:
+        data["summary"] = summary
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False
+        ) as f:
+            temp_path = Path(f.name)
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(temp_path, path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 def load_labels(path: Path) -> dict[str, dict]:
@@ -188,7 +218,12 @@ def build_test_model() -> FunctionModel:
 
 
 # ---------------------------------------------------------------- 採点と集計
-def judge_cases(agent: Agent, cases: list[dict], wait: float = 0.0) -> dict[str, dict]:
+def judge_cases(
+    agent: Agent,
+    cases: list[dict],
+    wait: float = 0.0,
+    on_case_complete: Callable[[dict[str, dict]], None] | None = None,
+) -> dict[str, dict]:
     """評価セットを 1 件ずつ採点する。戻り値は id → {基準: {reason, verdict}}。"""
     verdicts: dict[str, dict] = {}
     print(f"採点中 {len(cases)} 件 ", end="", flush=True)
@@ -200,6 +235,8 @@ def judge_cases(agent: Agent, cases: list[dict], wait: float = 0.0) -> dict[str,
             "reason": "末尾（最後の行）に「第N回」があるかをコードで判定",
             "verdict": check_lecture_mark(case["answer"]),
         }
+        if on_case_complete:
+            on_case_complete(verdicts)
         print(".", end="", flush=True)
         if wait:
             time.sleep(wait)
@@ -365,8 +402,14 @@ def main(argv: list[str] | None = None) -> None:
         print(f"[model] {model_name}  temperature=0  rubric={_rel(args.rubric)}")
 
     judge = build_judge(model, rubric)
+    run_at = datetime.now().isoformat(timespec="seconds")
+    rubric_path = str(_rel(args.rubric))
+
+    def save_progress(verdicts: dict[str, dict]) -> None:
+        write_result(args.out, model_name, rubric_path, run_at, verdicts)
+
     try:
-        verdicts = judge_cases(judge, cases, wait=args.wait)
+        verdicts = judge_cases(judge, cases, wait=args.wait, on_case_complete=save_progress)
     except ModelHTTPError as e:
         print("\n" + api_error_message(e.status_code, str(e.body)[:200]))
         raise SystemExit(1)
@@ -378,15 +421,7 @@ def main(argv: list[str] | None = None) -> None:
     summary = summarize(cases, verdicts, labels)
     print_summary(summary)
 
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(
-        json.dumps(
-            {"model": model_name, "rubric": str(_rel(args.rubric)), "run_at": datetime.now().isoformat(timespec="seconds"),
-             "verdicts": verdicts, "summary": summary},
-            ensure_ascii=False, indent=2,
-        ),
-        encoding="utf-8",
-    )
+    write_result(args.out, model_name, rubric_path, run_at, verdicts, summary)
     print(f"\n→ {_rel(args.out)} に保存しました")
 
 
